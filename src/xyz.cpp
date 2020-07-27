@@ -64,10 +64,10 @@ void SPEED::accumulateAcceleration(ACCEL accel, double totalTimeInSec){ // v = v
     setVector(getX() + accel.getX() * totalTimeInSec, getY() + accel.getY() * totalTimeInSec, getZ() + accel.getZ() * totalTimeInSec);
 }
 
-void DISPL::accumulateSpeed(SPEED speed, double totalTimeInSec){ // s = v_0*t
+void DISPL::accumulateSpeed(SPEED speed, double totalTimeInSec){ // s = (v_0)t
     setVector(getX() + speed.getX() * totalTimeInSec, getY() + speed.getY() * totalTimeInSec, getZ() + speed.getZ() * totalTimeInSec);
 }
-void DISPL::accumulateSpeed(SPEED speed, ACCEL accel, double totalTimeInSec){ // s = v_0*t + 1/2at^2
+void DISPL::accumulateSpeed(SPEED speed, ACCEL accel, double totalTimeInSec){ // s = (v_0)t + 1/2at^2
     setVector(getX() + speed.getX() * totalTimeInSec + 0.5 * accel.getX() * pow(totalTimeInSec, 2),
         getY() + speed.getY() * totalTimeInSec + 0.5 * accel.getY() * pow(totalTimeInSec, 2),
         getZ() + speed.getZ() * totalTimeInSec + 0.5 * accel.getZ() * pow(totalTimeInSec, 2));
