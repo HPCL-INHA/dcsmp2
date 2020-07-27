@@ -55,25 +55,25 @@ ACCEL::ACCEL(XYZ xyz, double unitDistInMeter, double unitTimeInSec){
     setAcceleration(xyz, unitDistInMeter, unitTimeInSec);
 }
 
-void ACCEL::setAcceleration(XYZ xyz, double unitDistInMeter, double unitTimeInSec){
+void ACCEL::setAcceleration(XYZ xyz, double unitDistInMeter, double unitTimeInSec){ // a = (unitDistInMeter) / (unitTimeInSec)
     xyz.multiplyByScalar(unitDistInMeter / unitTimeInSec);
     setVector(xyz.getX(), xyz.getY(), xyz.getZ());
 }
 
-void SPEED::accumulateAcceleration(ACCEL accel, double totalTimeInSec){
+void SPEED::accumulateAcceleration(ACCEL accel, double totalTimeInSec){ // v = v_0 + at
     setVector(getX() + accel.getX() * totalTimeInSec, getY() + accel.getY() * totalTimeInSec, getZ() + accel.getZ() * totalTimeInSec);
 }
 
-void DISPL::accumulateSpeed(SPEED speed, double totalTimeInSec){
+void DISPL::accumulateSpeed(SPEED speed, double totalTimeInSec){ // s = v_0*t
     setVector(getX() + speed.getX() * totalTimeInSec, getY() + speed.getY() * totalTimeInSec, getZ() + speed.getZ() * totalTimeInSec);
 }
-void DISPL::accumulateSpeed(SPEED speed, ACCEL accel, double totalTimeInSec){
+void DISPL::accumulateSpeed(SPEED speed, ACCEL accel, double totalTimeInSec){ // s = v_0*t + 1/2at^2
     setVector(getX() + speed.getX() * totalTimeInSec + 0.5 * accel.getX() * pow(totalTimeInSec, 2),
         getY() + speed.getY() * totalTimeInSec + 0.5 * accel.getY() * pow(totalTimeInSec, 2),
         getZ() + speed.getZ() * totalTimeInSec + 0.5 * accel.getZ() * pow(totalTimeInSec, 2));
 }
     
-SPEED DISPL::getAverageSpeed(double totalTimeInSec){
+SPEED DISPL::getAverageSpeed(double totalTimeInSec){ // v_avg = s / t
     SPEED speed;
     speed.setVector(getX(), getY(), getZ());
     speed.multiplyByScalar(1.0 / totalTimeInSec);
