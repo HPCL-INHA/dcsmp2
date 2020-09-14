@@ -2,8 +2,11 @@
 #include "dc_mqtt_msg.hpp"
 #include "user.hpp"
 
+#include <cstdlib>
+#include <cmath>
 #include <csignal>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -129,6 +132,8 @@ int main(int argc, char *argv[]){
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(TEST_ACTION_TOPIC).c_str(), 0);
 #else
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(DC_MQTT_ACTION_TOPIC).c_str(), 0);
+    // Test
+    cout << "action topic: " << getMqttRecursiveTopic(DC_MQTT_ACTION_TOPIC).c_str() << endl;
 #endif
     if(ret){
         perror("mosquitto_subscribe()");
@@ -138,6 +143,8 @@ int main(int argc, char *argv[]){
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(TEST_SENSOR_TOPIC).c_str(), 0);
 #else
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(DC_MQTT_SENSOR_TOPIC).c_str(), 0);
+    // Test
+    cout << "sensor topic: " << getMqttRecursiveTopic(DC_MQTT_SENSOR_TOPIC).c_str() << endl;
 #endif
     if(ret){
         perror("mosquitto_subscribe()");
@@ -147,6 +154,8 @@ int main(int argc, char *argv[]){
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(TEST_EAM_TOPIC).c_str(), 0);
 #else
     ret = mosquitto_subscribe(mosq, NULL, getMqttRecursiveTopic(DC_MQTT_EAM_TOPIC).c_str(), 0);
+    // Test
+    cout << "eam topic: " << getMqttRecursiveTopic(DC_MQTT_EAM_TOPIC).c_str() << endl;
 #endif
     if(ret){
         perror("mosquitto_subscribe()");
@@ -195,7 +204,26 @@ void mosq_connect_callback(struct mosquitto *mosq, void *obj, int result){
     cout << "Connected." << endl;
     cout << endl;
 }
+
+//////////////////////////////
+//////////////////////////////
+int dataCnt = 0; // 전역변수 dataCnt
+const char *fPath = "sensor-log.txt";
+ofstream fOut(fPath);
+ofstream fOutMean("sensor-log-mean.txt");
+ofstream fJson("sensor-json.txt");
+
+ofstream faxout("sensor-ax.txt");
+ofstream fayout("sensor-ay.txt");
+ofstream fazout("sensor-az.txt");
+
 void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg){
+    ////////////////////////
+    ////////////////////////
+    dataCnt++;
+    ////////////////////////
+    ////////////////////////
+
     // Check the message's topic
     string msgTopic = msg->topic;
     stringstream msgRootSs;
@@ -242,6 +270,134 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         size_t steps = strtoul(msgRoot[DC_MQTT_SENSOR_MSG_KEYS.STEP_CNT].asString().c_str(), NULL, 10);
         userPtr->setCurrentSteps(steps);
         
+        // 센서 데이터 모니터링
+        // DC_MQTT_SENSOR_MSG_KEYS는 MQTT 메시지(JSON)의 키값(문자열 상수)들을 저장해둔 전역 구조체 변수
+        Json::Value sensorMsgData = msgRoot[DC_MQTT_SENSOR_MSG_KEYS.DATA]; // Json::Value msgRoot;
+        size_t numSensorMsgData = sensorMsgData.size();
+
+        // 시간(timeCnt): 누적
+        // 속도(v): 누적된 시간 값을 적분식에 넣어 계산
+        // 거리(s): 누적된 시간 값을 적분식에 넣어 계산
+
+        const int freq = 50; // 50Hz 센서
+
+        float sumAx, sumAy, sumAz; // 초 마다 들어오는 가속도의 합산
+        float vx, vy, vz;
+        float sx, sy, sz;
+        static int timeCnt = 0;
+        
+        sumAx = 0.0f; sumAy = 0.0f; sumAz = 0.0f;
+        vx = 0.0f; vy = 0.0f; vz = 0.0f;
+        sx = 0.0f; sy = 0.0f; sz = 0.0f;
+        
+        float dt = (float)timeCnt / freq;
+        cout << "timeCnt: " << timeCnt << endl;
+        cout << "dt: " << dt << endl;
+
+        faxout << "[" << timeCnt << "]" << endl;
+        fayout << "[" << timeCnt << "]" << endl;
+        fazout << "[" << timeCnt << "]" << endl;
+
+        for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++) {
+            string axStr, ayStr, azStr;
+            float ax, ay, az;
+            axStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AX].asString();
+            ayStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AY].asString();
+            azStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AZ].asString();
+            
+            ax = atof(axStr.c_str());
+            ay = atof(ayStr.c_str());
+            az = atof(azStr.c_str());
+
+            sumAx += ax;
+            sumAy += ay;
+            sumAz += az;
+
+            // 속도: 가속도 적분
+            vx += ax * dt;
+            vy += ay * dt;
+            vz += az * dt;
+
+            // 거리(변위): 속도 적분
+            sx += vx * dt;
+            sy += vy * dt;
+            sz += vz * dt;
+
+            string gx, gy, gz;
+            string mx, my, mz;
+            gx = (*iter)["gx"].asString(); gy = (*iter)["gy"].asString(); gz = (*iter)["gz"].asString();
+            mx = (*iter)["mx"].asString(); my = (*iter)["my"].asString(); mz = (*iter)["mz"].asString();
+
+            //cout << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
+            //cout << "gx: " << gx << " | " << "gy: " << gy << " | " << "gz: " << gz << endl;
+            //cout << "mx: " << mx << " | " << "my: " << my << " | " << "mz: " << mz << endl;
+
+            if (ax >= 0.0f)
+                faxout << "+ ";
+            else
+                faxout << "- ";
+            faxout << ax << endl;
+            
+            if (ay >= 0.0f)
+                fayout << "+ ";
+            else
+                fayout << "- ";
+            fayout << ay << endl;
+
+            if (az >= 0.0f)
+                fazout << "+ ";
+            else
+                fazout << "- ";
+            fazout << az << endl;
+            
+        }
+        faxout << endl;
+        fayout << endl;
+        fazout << endl;
+
+        timeCnt++;
+
+        float avgAx = sumAx / (float)numSensorMsgData;
+        float avgAy = sumAy / (float)numSensorMsgData;
+        float avgAz = sumAz / (float)numSensorMsgData;
+
+        float a = sqrt(avgAx * avgAx + avgAy * avgAy + avgAz * avgAz);
+        float v = sqrt(vx * vx + vy * vy + vz * vz);
+        float s = sqrt(sx * sx + sy * sy + sz * sz);
+
+        cout << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
+        cout << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
+        cout << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
+        cout << ">>> a: " << a << endl;
+        cout << ">>> v: " << v << endl;
+        cout << ">>> s: " << s << endl;
+        cout << endl;
+
+        fOut << dataCnt << ": ";
+        fOut << '[' << timestamp << ']' << endl;
+        fOut << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
+        fOut << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
+        fOut << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
+        fOut << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
+        fOut << ">>> a: " << a << endl;
+        fOut << ">>> v: " << v << endl;
+        fOut << ">>> s: " << s << endl;
+        fOut << endl;
+
+        fOutMean << dataCnt << ": ";
+        fOutMean << '[' << timestamp << ']' << endl;
+        fOutMean << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
+        fOutMean << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
+        fOutMean << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
+        fOutMean << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
+        fOutMean << ">>> a: " << a << endl;
+        fOutMean << ">>> v: " << v << endl;
+        fOutMean << ">>> s: " << s << endl;
+        fOutMean << endl;
+
+        fJson << '[' << timestamp << ']' << endl;
+        fJson << sensorMsgData << endl << endl;
+
         // Progress calibration
         if(userIdToUser[userId].isCalibrating()){
             cout << "Calibration in progress... " << endl;
@@ -320,6 +476,14 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 }
 
 void mosq_terminate(int sig){
+    //////////////////////////////////
+    fOut.close();
+    fOutMean.close();
+    faxout.close();
+    fayout.close();
+    fazout.close();
+    //////////////////////////////////
+
     cout << "Terminate program..." << endl;
     cout << endl;
     running = false;
