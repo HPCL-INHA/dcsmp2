@@ -27,3 +27,4 @@ executable : $(OBJS)
 
 clean :
 	rm -f *.o $(TARGET)
+	rm -f sensor*.txt

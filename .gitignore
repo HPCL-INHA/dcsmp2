@@ -36,3 +36,6 @@ dcsmp2
 *.exe
 *.out
 *.app
+
+# log files
+sensor*.txt

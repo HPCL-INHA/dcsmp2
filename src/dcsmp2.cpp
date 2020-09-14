@@ -217,10 +217,21 @@ ofstream faxout("sensor-ax.txt");
 ofstream fayout("sensor-ay.txt");
 ofstream fazout("sensor-az.txt");
 
+void writeLog(ostream& os, const char *str, bool oendl = true) {
+    os << str;
+    if (oendl)
+        os << endl;
+}
+
+void writeLog(ostream& os, const string& str, bool oendl = true) {
+    writeLog(os, str.c_str(), oendl);
+}
+
 void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg){
     ////////////////////////
     ////////////////////////
     dataCnt++;
+    stringstream slog;
     ////////////////////////
     ////////////////////////
 
@@ -294,9 +305,15 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         cout << "timeCnt: " << timeCnt << endl;
         cout << "dt: " << dt << endl;
 
+        slog << "[" << timeCnt << "]";
+        writeLog(faxout, slog.str());
+        writeLog(fayout, slog.str());
+        writeLog(fazout, slog.str());
+        /*
         faxout << "[" << timeCnt << "]" << endl;
         fayout << "[" << timeCnt << "]" << endl;
         fazout << "[" << timeCnt << "]" << endl;
+        */
 
         for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++) {
             string axStr, ayStr, azStr;
@@ -314,9 +331,9 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             sumAz += az;
 
             // 속도: 가속도 적분
-            vx += ax * dt;
-            vy += ay * dt;
-            vz += az * dt;
+            vx += ax * 9.8f * dt;
+            vy += ay * 9.8f * dt;
+            vz += az * 9.8f * dt;
 
             // 거리(변위): 속도 적분
             sx += vx * dt;
@@ -331,29 +348,34 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             //cout << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
             //cout << "gx: " << gx << " | " << "gy: " << gy << " | " << "gz: " << gz << endl;
             //cout << "mx: " << mx << " | " << "my: " << my << " | " << "mz: " << mz << endl;
-
+            
+            /*
             if (ax >= 0.0f)
                 faxout << "+ ";
             else
                 faxout << "- ";
-            faxout << ax << endl;
             
             if (ay >= 0.0f)
                 fayout << "+ ";
             else
                 fayout << "- ";
-            fayout << ay << endl;
 
             if (az >= 0.0f)
                 fazout << "+ ";
             else
                 fazout << "- ";
+            */
+           
+            faxout << ax << endl;
+            fayout << ay << endl;
             fazout << az << endl;
-            
         }
-        faxout << endl;
-        fayout << endl;
-        fazout << endl;
+        writeLog(faxout, "");
+        writeLog(fayout, "");
+        writeLog(fazout, "");
+        //faxout << endl;
+        //fayout << endl;
+        //fazout << endl;
 
         timeCnt++;
 
@@ -365,6 +387,23 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         float v = sqrt(vx * vx + vy * vy + vz * vz);
         float s = sqrt(sx * sx + sy * sy + sz * sz);
 
+        slog.str("");
+        slog << dataCnt << ": ";
+        slog << '[' << timestamp << ']' << endl;
+        slog << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
+        slog << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
+        slog << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
+        slog << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
+        slog << ">>> a: " << a << endl;
+        slog << ">>> v: " << v << endl;
+        slog << ">>> s: " << s << endl;
+        slog << endl;
+
+        writeLog(cout, slog.str(), false);
+        writeLog(fOut, slog.str(), false);
+        writeLog(fOutMean, slog.str(), false);
+        
+        /*
         cout << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
         cout << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
         cout << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
@@ -394,6 +433,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         fOutMean << ">>> v: " << v << endl;
         fOutMean << ">>> s: " << s << endl;
         fOutMean << endl;
+        */
 
         fJson << '[' << timestamp << ']' << endl;
         fJson << sensorMsgData << endl << endl;
