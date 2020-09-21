@@ -293,15 +293,20 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         const int freq = 50; // 50Hz 센서
 
         float sumAx, sumAy, sumAz; // 초 마다 들어오는 가속도의 합산
-        float vx, vy, vz;
+        //float vx, vy, vz;
         float sx, sy, sz;
         static int timeCnt = 0;
+
+        static float vx = 0.0f;
+        static float vy = 0.0f;
+        static float vz = 0.0f;
         
         sumAx = 0.0f; sumAy = 0.0f; sumAz = 0.0f;
-        vx = 0.0f; vy = 0.0f; vz = 0.0f;
+        //vx = 0.0f; vy = 0.0f; vz = 0.0f;
         sx = 0.0f; sy = 0.0f; sz = 0.0f;
         
-        float dt = (float)timeCnt / freq;
+        //float dt = (float)timeCnt / freq;
+        const float dt = 1.0f / (float)freq;
         cout << "timeCnt: " << timeCnt << endl;
         cout << "dt: " << dt << endl;
 
@@ -314,7 +319,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         fayout << "[" << timeCnt << "]" << endl;
         fazout << "[" << timeCnt << "]" << endl;
         */
-
+        slog.str("");
         for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++) {
             string axStr, ayStr, azStr;
             float ax, ay, az;
@@ -331,10 +336,16 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             sumAz += az;
 
             // 속도: 가속도 적분
+            /*
             vx += ax * 9.8f * dt;
             vy += ay * 9.8f * dt;
             vz += az * 9.8f * dt;
+            */
 
+            vx += ax * dt;
+            vy += ay * dt;
+            vz += az * dt;
+            
             // 거리(변위): 속도 적분
             sx += vx * dt;
             sy += vy * dt;
@@ -349,6 +360,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             //cout << "gx: " << gx << " | " << "gy: " << gy << " | " << "gz: " << gz << endl;
             //cout << "mx: " << mx << " | " << "my: " << my << " | " << "mz: " << mz << endl;
             
+            slog << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
             /*
             if (ax >= 0.0f)
                 faxout << "+ ";
@@ -370,6 +382,9 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             fayout << ay << endl;
             fazout << az << endl;
         }
+        writeLog(fOut, slog.str(), false);
+        slog.str("");
+
         writeLog(faxout, "");
         writeLog(fayout, "");
         writeLog(fazout, "");
