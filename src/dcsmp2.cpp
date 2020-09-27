@@ -297,10 +297,15 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         float sx, sy, sz;
         static int timeCnt = 0;
 
+        /*
         static float vx = 0.0f;
         static float vy = 0.0f;
         static float vz = 0.0f;
-        
+        */
+       float vx = 0.0f;
+       float vy = 0.0f;
+       float vz = 0.0f;
+       
         sumAx = 0.0f; sumAy = 0.0f; sumAz = 0.0f;
         //vx = 0.0f; vy = 0.0f; vz = 0.0f;
         sx = 0.0f; sy = 0.0f; sz = 0.0f;
@@ -336,16 +341,16 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             sumAz += az;
 
             // 속도: 가속도 적분
-            /*
             vx += ax * 9.8f * dt;
             vy += ay * 9.8f * dt;
             vz += az * 9.8f * dt;
-            */
-
+            
+            /*
             vx += ax * dt;
             vy += ay * dt;
             vz += az * dt;
-            
+            */
+
             // 거리(변위): 속도 적분
             sx += vx * dt;
             sy += vy * dt;
