@@ -66,8 +66,10 @@ string lastUserId;
 string lastDeviceId;
 bool calibrating = false;
 
-int main(int argc, char *argv[]){
-    if(argc != 5){
+int main(int argc, char *argv[])
+{
+    if (argc != 5)
+    {
         cout << "Usage: " << argv[0] << " DOMAIN PORT ID PSWD" << endl;
         return EXIT_SUCCESS;
     }
@@ -110,19 +112,22 @@ int main(int argc, char *argv[]){
     // Initialize MQTT broker
     mosquitto_lib_init();
     mosq = mosquitto_new(argv[0], true, NULL);
-    if (!mosq){
+    if (!mosq)
+    {
         perror("mosquitto_new()");
         return EXIT_FAILURE;
     }
     mosquitto_connect_callback_set(mosq, mosq_connect_callback);
     mosquitto_message_callback_set(mosq, mosq_message_callback);
     int ret = mosquitto_username_pw_set(mosq, SERVER_ID.c_str(), SERVER_PSWD.c_str());
-    if (ret){
+    if (ret)
+    {
         perror("mosquitto_username_pw_set()");
         return EXIT_FAILURE;
     }
     ret = mosquitto_connect(mosq, SERVER_IP.c_str(), atoi(SERVER_PORT.c_str()), DC_MQTT_KEEPALIVE_VAL);
-    if (ret){
+    if (ret)
+    {
         perror("mosquitto_connect()");
         return EXIT_FAILURE;
     }
@@ -135,7 +140,8 @@ int main(int argc, char *argv[]){
     // Test
     cout << "action topic: " << getMqttRecursiveTopic(DC_MQTT_ACTION_TOPIC).c_str() << endl;
 #endif
-    if(ret){
+    if (ret)
+    {
         perror("mosquitto_subscribe()");
         return EXIT_FAILURE;
     }
@@ -146,7 +152,8 @@ int main(int argc, char *argv[]){
     // Test
     cout << "sensor topic: " << getMqttRecursiveTopic(DC_MQTT_SENSOR_TOPIC).c_str() << endl;
 #endif
-    if(ret){
+    if (ret)
+    {
         perror("mosquitto_subscribe()");
         return EXIT_FAILURE;
     }
@@ -157,7 +164,8 @@ int main(int argc, char *argv[]){
     // Test
     cout << "eam topic: " << getMqttRecursiveTopic(DC_MQTT_EAM_TOPIC).c_str() << endl;
 #endif
-    if(ret){
+    if (ret)
+    {
         perror("mosquitto_subscribe()");
         return EXIT_FAILURE;
     }
@@ -182,7 +190,8 @@ int main(int argc, char *argv[]){
 
     // Loop
     sleep(DELAY_START_IN_SEC);
-    while(running){
+    while (running)
+    {
 #ifdef TEST
         generateTestDcMqttActionMessage();
         generateTestDcMqttSensorMessage();
@@ -200,7 +209,8 @@ int main(int argc, char *argv[]){
     return EXIT_SUCCESS;
 }
 
-void mosq_connect_callback(struct mosquitto *mosq, void *obj, int result){
+void mosq_connect_callback(struct mosquitto *mosq, void *obj, int result)
+{
     cout << "Connected." << endl;
     cout << endl;
 }
@@ -217,17 +227,20 @@ ofstream faxout("sensor-ax.txt");
 ofstream fayout("sensor-ay.txt");
 ofstream fazout("sensor-az.txt");
 
-void writeLog(ostream& os, const char *str, bool oendl = true) {
+void writeLog(ostream &os, const char *str, bool oendl = true)
+{
     os << str;
     if (oendl)
         os << endl;
 }
 
-void writeLog(ostream& os, const string& str, bool oendl = true) {
+void writeLog(ostream &os, const string &str, bool oendl = true)
+{
     writeLog(os, str.c_str(), oendl);
 }
 
-void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg){
+void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
+{
     ////////////////////////
     ////////////////////////
     dataCnt++;
@@ -254,24 +267,28 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
     lastDeviceId = deviceId;
 
     // Register user if new
-    if(userIdToUser.find(userId) == userIdToUser.end())
+    if (userIdToUser.find(userId) == userIdToUser.end())
         userIdToUser[userId] = USER(userId, deviceId);
     USER *userPtr = &userIdToUser[userId];
 
     // Process action message if exists
 #ifdef TEST
-    if(msgTopic.find(TEST_ACTION_TOPIC) != msgTopic.npos){
+    if (msgTopic.find(TEST_ACTION_TOPIC) != msgTopic.npos)
+    {
 #else
-    if(msgTopic.find(DC_MQTT_ACTION_TOPIC) != msgTopic.npos){
+    if (msgTopic.find(DC_MQTT_ACTION_TOPIC) != msgTopic.npos)
+    {
 #endif
         // 구현 필요
     }
 
     // Process sensor message if exists
 #ifdef TEST
-    else if(msgTopic.find(TEST_SENSOR_TOPIC) != msgTopic.npos){
+    else if (msgTopic.find(TEST_SENSOR_TOPIC) != msgTopic.npos)
+    {
 #else
-    else if(msgTopic.find(DC_MQTT_SENSOR_TOPIC) != msgTopic.npos){
+    else if (msgTopic.find(DC_MQTT_SENSOR_TOPIC) != msgTopic.npos)
+    {
 #endif
         // Get trivial sensor information
         string sensorId = msgRoot[DC_MQTT_SENSOR_MSG_KEYS.SENSOR_ID].asString();
@@ -280,7 +297,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         // Update step counter
         size_t steps = strtoul(msgRoot[DC_MQTT_SENSOR_MSG_KEYS.STEP_CNT].asString().c_str(), NULL, 10);
         userPtr->setCurrentSteps(steps);
-        
+
         // 센서 데이터 모니터링
         // DC_MQTT_SENSOR_MSG_KEYS는 MQTT 메시지(JSON)의 키값(문자열 상수)들을 저장해둔 전역 구조체 변수
         Json::Value sensorMsgData = msgRoot[DC_MQTT_SENSOR_MSG_KEYS.DATA]; // Json::Value msgRoot;
@@ -302,14 +319,19 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         static float vy = 0.0f;
         static float vz = 0.0f;
         */
-       float vx = 0.0f;
-       float vy = 0.0f;
-       float vz = 0.0f;
-       
-        sumAx = 0.0f; sumAy = 0.0f; sumAz = 0.0f;
-        //vx = 0.0f; vy = 0.0f; vz = 0.0f;
-        sx = 0.0f; sy = 0.0f; sz = 0.0f;
+
+        float vx = 0.0f;
+        float vy = 0.0f;
+        float vz = 0.0f;
         
+        sumAx = 0.0f;
+        sumAy = 0.0f;
+        sumAz = 0.0f;
+        //vx = 0.0f; vy = 0.0f; vz = 0.0f;
+        sx = 0.0f;
+        sy = 0.0f;
+        sz = 0.0f;
+
         //float dt = (float)timeCnt / freq;
         const float dt = 1.0f / (float)freq;
         cout << "timeCnt: " << timeCnt << endl;
@@ -325,13 +347,14 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         fazout << "[" << timeCnt << "]" << endl;
         */
         slog.str("");
-        for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++) {
+        for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++)
+        {
             string axStr, ayStr, azStr;
             float ax, ay, az;
             axStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AX].asString();
             ayStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AY].asString();
             azStr = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AZ].asString();
-            
+
             ax = atof(axStr.c_str());
             ay = atof(ayStr.c_str());
             az = atof(azStr.c_str());
@@ -344,7 +367,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             vx += ax * 9.8f * dt;
             vy += ay * 9.8f * dt;
             vz += az * 9.8f * dt;
-            
+
             /*
             vx += ax * dt;
             vy += ay * dt;
@@ -358,14 +381,20 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 
             string gx, gy, gz;
             string mx, my, mz;
-            gx = (*iter)["gx"].asString(); gy = (*iter)["gy"].asString(); gz = (*iter)["gz"].asString();
-            mx = (*iter)["mx"].asString(); my = (*iter)["my"].asString(); mz = (*iter)["mz"].asString();
+            gx = (*iter)["gx"].asString();
+            gy = (*iter)["gy"].asString();
+            gz = (*iter)["gz"].asString();
+            mx = (*iter)["mx"].asString();
+            my = (*iter)["my"].asString();
+            mz = (*iter)["mz"].asString();
 
             //cout << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
             //cout << "gx: " << gx << " | " << "gy: " << gy << " | " << "gz: " << gz << endl;
             //cout << "mx: " << mx << " | " << "my: " << my << " | " << "mz: " << mz << endl;
-            
-            slog << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
+
+            slog << "ax: " << ax << " | "
+                 << "ay: " << ay << " | "
+                 << "az: " << az << endl;
             /*
             if (ax >= 0.0f)
                 faxout << "+ ";
@@ -382,7 +411,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             else
                 fazout << "- ";
             */
-           
+
             faxout << ax << endl;
             fayout << ay << endl;
             fazout << az << endl;
@@ -410,10 +439,18 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         slog.str("");
         slog << dataCnt << ": ";
         slog << '[' << timestamp << ']' << endl;
-        slog << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
-        slog << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
-        slog << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
-        slog << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
+        slog << "> sum ax: " << sumAx << " | "
+             << "sum ay: " << sumAy << " | "
+             << "sum az: " << sumAz << endl;
+        slog << ">> avg ax: " << avgAx << " | "
+             << "avg ay: " << avgAy << " | "
+             << "avg az: " << avgAz << endl;
+        slog << ">>> vx: " << vx << " | "
+             << "vy: " << vy << " | "
+             << "vz: " << vz << endl;
+        slog << ">>> sx: " << sx << " | "
+             << "sy: " << sy << " | "
+             << "sz: " << sz << endl;
         slog << ">>> a: " << a << endl;
         slog << ">>> v: " << v << endl;
         slog << ">>> s: " << s << endl;
@@ -422,7 +459,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         writeLog(cout, slog.str(), false);
         writeLog(fOut, slog.str(), false);
         writeLog(fOutMean, slog.str(), false);
-        
+
         /*
         cout << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
         cout << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
@@ -456,16 +493,19 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         */
 
         fJson << '[' << timestamp << ']' << endl;
-        fJson << sensorMsgData << endl << endl;
+        fJson << sensorMsgData << endl
+              << endl;
 
         // Progress calibration
-        if(userIdToUser[userId].isCalibrating()){
+        if (userIdToUser[userId].isCalibrating())
+        {
             cout << "Calibration in progress... " << endl;
             cout << endl;
             Json::Value sensorMsgData = msgRoot[DC_MQTT_SENSOR_MSG_KEYS.DATA];
             size_t numSensorMsgData = sensorMsgData.size();
             double unitTimeInSec = 1.0 / numSensorMsgData;
-            for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++){
+            for (auto iter = sensorMsgData.begin(); iter != sensorMsgData.end(); iter++)
+            {
                 string ax, ay, az;
                 ax = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AX].asString();
                 ay = (*iter)[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AY].asString();
@@ -483,19 +523,22 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 
         // 나머지 구현 필요
     }
-   
+
     // Process EAM message if exists
 #ifdef TEST
-    if(msgTopic.find(TEST_EAM_TOPIC) != msgTopic.npos){
+    if (msgTopic.find(TEST_EAM_TOPIC) != msgTopic.npos)
+    {
 #else
-    if(msgTopic.find(DC_MQTT_EAM_TOPIC) != msgTopic.npos){
+    if (msgTopic.find(DC_MQTT_EAM_TOPIC) != msgTopic.npos)
+    {
 #endif
         // Get order for calibration
         bool enableCalibration = atoi(msgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_ENABLE_CALC_STEP_LEN].asString().c_str());
         bool disableCalibration = atoi(msgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_DISABLE_CALC_STEP_LEN].asString().c_str());
-        if(enableCalibration)
+        if (enableCalibration)
             userPtr->startCalibration(timestamp);
-        if(disableCalibration){
+        if (disableCalibration)
+        {
             userPtr->endCalibration(timestamp);
 
             // Prepare trivial sensor information
@@ -510,16 +553,16 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             // Prepare user calibration information
             bool strideValid, walkingSpeedValid;
             eamMsgRoot[DC_MQTT_MSG_KEY_STRIDE] = userPtr->getCalibratedStride(&strideValid);
-            if(strideValid)
+            if (strideValid)
                 eamMsgRoot[DC_MQTT_MSG_KEY_STRIDE_VALID] = "1";
             else
                 eamMsgRoot[DC_MQTT_MSG_KEY_STRIDE_VALID] = "0";
             eamMsgRoot[DC_MQTT_MSG_KEY_WALKING_SPEED] = userPtr->getCalibratedWalkingSpeed(&walkingSpeedValid);
-            if(walkingSpeedValid)
+            if (walkingSpeedValid)
                 eamMsgRoot[DC_MQTT_MSG_KEY_WALKING_SPEED_VALID] = "1";
             else
                 eamMsgRoot[DC_MQTT_MSG_KEY_WALKING_SPEED_VALID] = "0";
-            
+
             // 나머지 구현 필요
 
             // Send EAM message
@@ -535,7 +578,8 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
     }
 }
 
-void mosq_terminate(int sig){
+void mosq_terminate(int sig)
+{
     //////////////////////////////////
     fOut.close();
     fOutMean.close();
@@ -550,10 +594,12 @@ void mosq_terminate(int sig){
 }
 
 #ifdef TEST
-void generateTestDcMqttActionMessage(){
+void generateTestDcMqttActionMessage()
+{
     // 구현 필요
 }
-void generateTestDcMqttSensorMessage(){
+void generateTestDcMqttSensorMessage()
+{
     // Generate trivial sensor information
     Json::Value testSensorMsgRoot = testSensorMsgTemplate;
     DC_MQTT_DATETIME datetime;
@@ -561,7 +607,8 @@ void generateTestDcMqttSensorMessage(){
 
     // Generate sensor acceleration data
     Json::Value testSensorMsgData(Json::arrayValue);
-    for(size_t i = 0; i <= TEST_MAX_ACCEL_DATA; i++){
+    for (size_t i = 0; i <= TEST_MAX_ACCEL_DATA; i++)
+    {
         Json::Value entry;
         entry[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.INDEX] = to_string(i);
         entry[DC_MQTT_SENSOR_MSG_KEYS.DATA_ELEM_KEYS.AX] = to_string((double)rand() * TEST_LIM_XYZ_MAG / RAND_MAX);
@@ -585,20 +632,23 @@ void generateTestDcMqttSensorMessage(){
     mosquitto_publish(mosq, NULL, getMqttSubtopic(TEST_SENSOR_TOPIC, testSubtopics).c_str(), testSensorSs.str().size(), testSensorSs.str().c_str(), DC_MQTT_QOS_LEVEL, false);
 }
 
-void requestTestDcMqttEamMessage(int sig){
+void requestTestDcMqttEamMessage(int sig)
+{
     // Generate trivial sensor information
     Json::Value testEamMsgRoot = testEamMsgTemplate;
     DC_MQTT_DATETIME datetime;
     testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.DATETIME] = datetime.getDcMqttTimestamp();
-    
+
     // Generate calibration order
-    if(testcalibrating){
+    if (testcalibrating)
+    {
         cout << "Request to end calibration..." << endl;
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_DISABLE_CALC_STEP_LEN] = "1";
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_ENABLE_CALC_STEP_LEN] = "0";
         testcalibrating = false;
     }
-    else{
+    else
+    {
         cout << "Request to start calibration..." << endl;
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_DISABLE_CALC_STEP_LEN] = "0";
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_ENABLE_CALC_STEP_LEN] = "1";
@@ -615,22 +665,25 @@ void requestTestDcMqttEamMessage(int sig){
 }
 #endif
 
-void testFunction(int sig){
+void testFunction(int sig)
+{
     // Generate trivial sensor information
     Json::Value testEamMsgRoot;
     testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.USER_ID] = lastUserId;
     testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.DEVICE_ID] = lastDeviceId;
     DC_MQTT_DATETIME datetime;
     testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.DATETIME] = datetime.getDcMqttTimestamp();
-    
+
     // Generate calibration order
-    if(calibrating){
+    if (calibrating)
+    {
         cout << "Request to end calibration..." << endl;
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_DISABLE_CALC_STEP_LEN] = "1";
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_ENABLE_CALC_STEP_LEN] = "0";
         calibrating = false;
     }
-    else{
+    else
+    {
         cout << "Request to start calibration..." << endl;
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_DISABLE_CALC_STEP_LEN] = "0";
         testEamMsgRoot[DC_MQTT_EAM_MSG_KEYS.ORDER_ENABLE_CALC_STEP_LEN] = "1";
