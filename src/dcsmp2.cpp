@@ -227,6 +227,11 @@ ofstream faxout("sensor-ax.txt");
 ofstream fayout("sensor-ay.txt");
 ofstream fazout("sensor-az.txt");
 
+int timeCnt = 0;
+float vxAccum = 0.0f;
+float vyAccum = 0.0f;
+float vzAccum = 0.0f;
+
 void writeLog(ostream &os, const char *str, bool oendl = true)
 {
     os << str;
@@ -238,6 +243,11 @@ void writeLog(ostream &os, const string &str, bool oendl = true)
 {
     writeLog(os, str.c_str(), oendl);
 }
+
+float getNorm(float x, float y, float z) {
+    return sqrt(x * x + y * y + z * z);
+}
+
 
 void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
 {
@@ -312,22 +322,19 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         float sumAx, sumAy, sumAz; // 초 마다 들어오는 가속도의 합산
         //float vx, vy, vz;
         float sx, sy, sz;
-        static int timeCnt = 0;
 
-        /*
-        static float vx = 0.0f;
-        static float vy = 0.0f;
-        static float vz = 0.0f;
-        */
+        float vx;
+        float vy;
+        float vz;
 
-        float vx = 0.0f;
-        float vy = 0.0f;
-        float vz = 0.0f;
-        
         sumAx = 0.0f;
         sumAy = 0.0f;
         sumAz = 0.0f;
-        //vx = 0.0f; vy = 0.0f; vz = 0.0f;
+        
+        vx = 0.0f;
+        vy = 0.0f;
+        vz = 0.0f;
+
         sx = 0.0f;
         sy = 0.0f;
         sz = 0.0f;
@@ -368,49 +375,18 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
             vy += ay * 9.8f * dt;
             vz += az * 9.8f * dt;
 
-            /*
-            vx += ax * dt;
-            vy += ay * dt;
-            vz += az * dt;
-            */
+            vxAccum += ax * 9.8f * dt;
+            vyAccum += ay * 9.8f * dt;
+            vzAccum += az * 9.8f * dt;
 
             // 거리(변위): 속도 적분
             sx += vx * dt;
             sy += vy * dt;
             sz += vz * dt;
 
-            string gx, gy, gz;
-            string mx, my, mz;
-            gx = (*iter)["gx"].asString();
-            gy = (*iter)["gy"].asString();
-            gz = (*iter)["gz"].asString();
-            mx = (*iter)["mx"].asString();
-            my = (*iter)["my"].asString();
-            mz = (*iter)["mz"].asString();
-
-            //cout << "ax: " << ax << " | " << "ay: " << ay << " | " << "az: " << az << endl;
-            //cout << "gx: " << gx << " | " << "gy: " << gy << " | " << "gz: " << gz << endl;
-            //cout << "mx: " << mx << " | " << "my: " << my << " | " << "mz: " << mz << endl;
-
             slog << "ax: " << ax << " | "
                  << "ay: " << ay << " | "
                  << "az: " << az << endl;
-            /*
-            if (ax >= 0.0f)
-                faxout << "+ ";
-            else
-                faxout << "- ";
-            
-            if (ay >= 0.0f)
-                fayout << "+ ";
-            else
-                fayout << "- ";
-
-            if (az >= 0.0f)
-                fazout << "+ ";
-            else
-                fazout << "- ";
-            */
 
             faxout << ax << endl;
             fayout << ay << endl;
@@ -432,12 +408,12 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         float avgAy = sumAy / (float)numSensorMsgData;
         float avgAz = sumAz / (float)numSensorMsgData;
 
-        float a = sqrt(avgAx * avgAx + avgAy * avgAy + avgAz * avgAz);
-        float v = sqrt(vx * vx + vy * vy + vz * vz);
-        float s = sqrt(sx * sx + sy * sy + sz * sz);
+        float a = getNorm(avgAx, avgAy, avgAz);
+        float v = getNorm(vx, vy, vz);
+        float s = getNorm(sx, sy, sz);
 
         slog.str("");
-        slog << dataCnt << ": ";
+        slog << "time: " << timeCnt << endl;
         slog << '[' << timestamp << ']' << endl;
         slog << "> sum ax: " << sumAx << " | "
              << "sum ay: " << sumAy << " | "
@@ -459,38 +435,6 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         writeLog(cout, slog.str(), false);
         writeLog(fOut, slog.str(), false);
         writeLog(fOutMean, slog.str(), false);
-
-        /*
-        cout << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
-        cout << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
-        cout << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
-        cout << ">>> a: " << a << endl;
-        cout << ">>> v: " << v << endl;
-        cout << ">>> s: " << s << endl;
-        cout << endl;
-
-        fOut << dataCnt << ": ";
-        fOut << '[' << timestamp << ']' << endl;
-        fOut << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
-        fOut << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
-        fOut << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
-        fOut << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
-        fOut << ">>> a: " << a << endl;
-        fOut << ">>> v: " << v << endl;
-        fOut << ">>> s: " << s << endl;
-        fOut << endl;
-
-        fOutMean << dataCnt << ": ";
-        fOutMean << '[' << timestamp << ']' << endl;
-        fOutMean << "> sum ax: " << sumAx << " | " << "sum ay: " << sumAy << " | " << "sum az: " << sumAz << endl;
-        fOutMean << ">> avg ax: " << avgAx << " | " << "avg ay: " << avgAy << " | " << "avg az: " << avgAz << endl;
-        fOutMean << ">>> vx: " << vx << " | " << "vy: " << vy << " | " << "vz: " << vz << endl;
-        fOutMean << ">>> sx: " << sx << " | " << "sy: " << sy << " | " << "sz: " << sz << endl;
-        fOutMean << ">>> a: " << a << endl;
-        fOutMean << ">>> v: " << v << endl;
-        fOutMean << ">>> s: " << s << endl;
-        fOutMean << endl;
-        */
 
         fJson << '[' << timestamp << ']' << endl;
         fJson << sensorMsgData << endl
@@ -580,6 +524,21 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 
 void mosq_terminate(int sig)
 {
+    float deltaTime = (float)timeCnt;
+    float v = getNorm(vxAccum / deltaTime, vyAccum / deltaTime, vzAccum / deltaTime);
+    stringstream slog;
+
+    slog.str("");
+    slog << "#########################################" << endl;
+    slog << "delta time: " << timeCnt << endl;
+    slog << "vxAccum: " << vxAccum << " | "
+         << "vyAccum: " << vyAccum << " | "
+         << "vzAccum: " << vzAccum << endl;
+    slog << "-> v: " << v << endl;
+    writeLog(cout, slog.str());
+    writeLog(fOut, slog.str());
+    writeLog(fOutMean, slog.str());
+
     //////////////////////////////////
     fOut.close();
     fOutMean.close();
