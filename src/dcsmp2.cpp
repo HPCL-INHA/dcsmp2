@@ -253,6 +253,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 {
     ////////////////////////
     ////////////////////////
+    timeCnt++;
     dataCnt++;
     stringstream slog;
     ////////////////////////
@@ -402,7 +403,6 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
         //fayout << endl;
         //fazout << endl;
 
-        timeCnt++;
 
         float avgAx = sumAx / (float)numSensorMsgData;
         float avgAy = sumAy / (float)numSensorMsgData;
@@ -464,6 +464,7 @@ void mosq_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
                 userPtr->progressCalibration(accel, unitTimeInSec);
             }
         }
+        
 
         // 나머지 구현 필요
     }
